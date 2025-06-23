@@ -441,15 +441,43 @@ router.post('/generate', async (req, res) => {
             name, course, date, certNumber, templatePath: backgroundDataUrl
         });
 
-        // Puppeteer setup (use browserLauncher util if you have it, else direct)
+        // Puppeteer setup with multiple fallback paths
         const puppeteer = require('puppeteer-core');
-        const executablePath = process.env.CHROME_BIN || '/usr/bin/chromium-browser';
-        browser = await puppeteer.launch({
-            args: ['--no-sandbox', '--disable-setuid-sandbox'],
-            executablePath,
-            headless: true,
-            timeout: 20000
-        });
+        const executablePaths = [
+            '/usr/bin/chromium',
+            '/usr/bin/chromium-browser',
+            '/usr/bin/google-chrome',
+            '/usr/bin/google-chrome-stable'
+        ];
+
+        let browser = null;
+        let launchError = null;
+
+        // Try each executable path until one works
+        for (const executablePath of executablePaths) {
+            try {
+                browser = await puppeteer.launch({
+                    args: [
+                        '--no-sandbox',
+                        '--disable-setuid-sandbox',
+                        '--disable-dev-shm-usage',
+                        '--single-process'
+                    ],
+                    executablePath,
+                    headless: 'new'
+                });
+                console.log(`Successfully launched browser with: ${executablePath}`);
+                break;
+            } catch (err) {
+                launchError = err;
+                console.log(`Failed to launch with ${executablePath}:`, err.message);
+                continue;
+            }
+        }
+
+        if (!browser) {
+            throw new Error(`Failed to launch browser: ${launchError?.message}`);
+        }
 
         const page = await browser.newPage();
         await page.setContent(html, { waitUntil: ['domcontentloaded', 'networkidle0'], timeout: 15000 });

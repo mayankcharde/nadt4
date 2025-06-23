@@ -1,36 +1,36 @@
 const puppeteer = require('puppeteer-core');
 
 async function launchBrowser() {
-    const options = {
-        args: [
-            '--no-sandbox',
-            '--disable-setuid-sandbox',
-            '--disable-dev-shm-usage',
-            '--single-process',
-            '--no-zygote'
-        ],
-        executablePath: '/usr/bin/google-chrome', // Confirmed path for Docker/Render
-        headless: 'new',
-        timeout: 30000
-    };
+    const executablePaths = [
+        '/usr/bin/chromium',
+        '/usr/bin/chromium-browser',
+        '/usr/bin/google-chrome',
+        '/usr/bin/google-chrome-stable'
+    ];
 
-    try {
-        return await puppeteer.launch(options);
-    } catch (error) {
-        console.error('Chrome launch error:', error);
-        // Try alternative Chrome path
+    for (const executablePath of executablePaths) {
         try {
-            options.executablePath = '/usr/bin/chromium';
-            return await puppeteer.launch(options);
-        } catch (fallbackError) {
-            console.error('Fallback launch failed:', fallbackError);
-            throw error;
+            return await puppeteer.launch({
+                args: [
+                    '--no-sandbox',
+                    '--disable-setuid-sandbox',
+                    '--disable-dev-shm-usage',
+                    '--single-process'
+                ],
+                executablePath,
+                headless: 'new',
+                timeout: 30000
+            });
+        } catch (error) {
+            console.error(`Failed to launch with ${executablePath}:`, error.message);
+            continue;
         }
     }
+    
+    throw new Error('Failed to launch browser with any available Chrome/Chromium installation');
 }
 
 module.exports = { launchBrowser };
-      
     
 
 module.exports = { launchBrowser };
